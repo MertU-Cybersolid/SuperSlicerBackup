@@ -1827,6 +1827,9 @@ struct Plater::priv
     void update_ui_from_settings();
     void update_main_toolbar_tooltips();
 //   std::shared_ptr<ProgressStatusBar> statusbar();
+
+	enum class  MoldType: int;
+    void        create_molded_object(const std::vector<fs::path> &, ConfigMoldType);
     std::string get_config(const std::string &key) const;
 
     std::vector<size_t> load_files(const std::vector<fs::path>& input_files, bool load_model, bool load_config, bool update_dirs = true, bool used_inches = false);
@@ -2041,6 +2044,9 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         "first_layer_extrusion_width",
         "init_z_rotate", 
         "max_print_height",
+        //cyberslicer
+		"mold_shapes",
+		"mold_shapes_type",
         "perimeter_extrusion_width",
         "extrusion_width",
         "skirts", "skirt_brim", "skirt_distance", "skirt_distance_from_brim", 
@@ -2405,6 +2411,120 @@ void Plater::priv::update_main_toolbar_tooltips()
 //    return main_frame->m_statusbar;
 //}
 
+
+/*
+	Cyberslicer Metal Extrusion Util Function 
+	First method: [type](wxCommandEvent&) { obj_list()->load_subobject(type); } GUI_Factories line 511
+    type is an enum value of ModelValueType. We are going to use NEGATIVE_VOLUME for the place of type.
+    This method is for loading a mold in the same shape of loaded object.
+    Second method: [type, item](wxCommandEvent&) { obj_list()->load_generic_subobject(item, type); } GUI_Factories line 526
+    std::vector<std::string> items = { "Box", "Cylinder", "Sphere", "Slab" }; 
+    This method is going to be used for creating a mold in a shape of Box, Cylinder or Sphere etc...
+    type is still ModelObjectType Enum NEGATIVE_VOLUME
+
+*/
+
+enum class  Plater::priv::MoldType: int {
+    NONE = -1,
+    BOX = 0,
+    CUBE,
+    CYLINDER,
+    SUPPORT_ENFORCER,
+    SEAM_POSITION,
+};
+
+
+void Plater::priv::create_molded_object(const std::vector<fs::path> &input_files, ConfigMoldType mold_type)
+{
+	Selection& selection = view3D->get_canvas3d()->get_selection();
+    const int  obj_idx   = selection.get_object_idx();
+    int        mold_idx;
+	selection.clear();
+
+    ObjectManipulation *object_manipulation = sidebar->obj_manipul();
+
+    ModelObjectPtrs *objects = wxGetApp().obj_list()->objects();
+
+    //ModelObject *mold;
+    if (mold_type == ConfigMoldType::mtNone)
+        return;
+    else if (mold_type == ConfigMoldType::mtBox) {
+        return;
+    }
+    else if (mold_type == ConfigMoldType::mtCube) {
+        // Box objesi olustur ve selectionu ona ata. 
+        wxGetApp().obj_list()->load_generic_subobject("Box",
+                                                      ModelVolumeType::INVALID); // This creates a normal Box object
+        mold_idx = selection.get_object_idx();
+
+        //selection.clear();
+        //selection.add_object(obj_idx);
+        //selection.start_dragging();
+		//selection.translate(Vec3d(20,20,20));
+        //wxGetApp().plater()->canvas3D()->do_move(""); // avoid storing another snapshot. NOTE: You can see example in Selection.cpp as "scale_to_fit_print_volume" function
+        
+    } 
+    else if(mold_type == ConfigMoldType::mtCylinder) {
+        wxGetApp().obj_list()->load_generic_subobject("Cylinder",
+                                                      ModelVolumeType::INVALID); // This creates a normal Box object
+        mold_idx = selection.get_object_idx();
+    }
+    else {
+
+        //std::vector<size_t> object_idxs = load_files(input_files, true, false, true);
+        // Ayni objeden bir tane daha olustur 110% boyutuna scale et. selectionu ona ata
+    }
+
+    wxArrayString files;
+    for (const auto &file : input_files)
+        files.Add(from_path(file));
+    wxGetApp().obj_list()->load_subobject_from_input(files, ModelVolumeType::NEGATIVE_VOLUME, false); //Bu negatif obje olarak kalacak
+
+    ModelObject *object = objects->at(obj_idx);
+    ModelObject *mold_object = objects->at(mold_idx);
+
+    //const double z_diff = object->bounding_box().size().z() - objects->at(mold_idx)->bounding_box().size().z();
+    //Vec3d        part_offset   = Vec3d(-negative_volume->get_offset().x(), -negative_volume->get_offset().y(), -22);
+    //negative_volume->set_offset(Vec3d(0, 0, z_diff));
+    //update();
+    const double size = object->bounding_box().size().x() + 5;
+    selection.clear();
+    selection.add_volume(mold_idx, 0, 0); //volume_idx == index of the volume inside the list, instance_idx == instances represent each copy of the same object. In this case we have 1 so its 0. index
+    object_manipulation->change_size_value(0, size); // Object Manipulation private methods are changed to public
+
+    const double z_diff =  object->bounding_box().center().z() - mold_object->bounding_box().center().z();
+
+    selection.clear();
+    selection.add_volume(mold_idx, 1, 0); //volume_idx == index of the volume inside the list, instance_idx == instances represent each copy of the same object. In this case we have 1 so its 0. index
+    const double zero = 0;
+    object_manipulation->change_position_value(0, zero);
+    object_manipulation->change_position_value(1, zero);
+    object_manipulation->change_position_value(2, z_diff);
+    object_manipulation->change_position_value(0, zero);
+    
+    selection.clear();
+    selection.add_object(mold_idx);
+
+    sidebar->update_objects_list_extruder_column(2);
+    mold_object->config.set_key_value("extruder", new ConfigOptionInt(1));
+    object->config.set_key_value("extruder", new ConfigOptionInt(2));
+
+	//mold_idx = selection.get_object_idx();
+	//mold = objects->at(mold_idx);
+    //ModelVolume *negative_part = *(mold->volumes.end() - 1);
+    //ModelVolume *positive_part = *(mold->volumes.begin());
+    //Vec3d        part_offset   = Vec3d(0, 0, 0) - (negative_part->get_offset());
+    //negative_part->translate(part_offset);
+    //positive_part->scale(2);
+    
+	/*
+		Model: is the summation of all the objects on object list. If you call get_model(), then it selects all the objects and manipulate them.
+		ModelObject: is the individual objects those are in object list and can be reached by ->objects referencing as ModelObjectPtrs vector.
+	    Important fact: Translation acts as expected on every ModelObject. It does not align the z axis of object to the ground
+		ModelVolume: Those are the positive and negative volume instances of the ModelObjects and can be reached with ->volumes referencing as ModelVolumePtrs vector.
+	*/
+}
+
 std::string Plater::priv::get_config(const std::string &key) const
 {
     return wxGetApp().app_config->get(key);
@@ -2415,6 +2535,8 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
     if (input_files.empty()) { return std::vector<size_t>(); }
 
     auto *nozzle_dmrs = config->opt<ConfigOptionFloats>("nozzle_diameter");
+    //auto *enable_mold = config->opt_bool("enable_mold") // TODO: add mold condition to metal_extruder button
+    bool enable_mold = config->opt_bool("mold_shapes");
 
     bool one_by_one = input_files.size() == 1 || printer_technology == ptSLA || nozzle_dmrs->values.size() <= 1;
     if (! one_by_one) {
@@ -2749,6 +2871,7 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
 //        statusbar()->set_status_text(_L("Loaded"));
     }
 
+
     // automatic selection of added objects
     if (!obj_idxs.empty() && view3D != nullptr) {
         // update printable state for new volumes on canvas3D
@@ -2764,9 +2887,23 @@ std::vector<size_t> Plater::priv::load_files(const std::vector<fs::path>& input_
             // this is required because the selected object changed and the flatten on face an sla support gizmos need to be updated accordingly
             view3D->get_canvas3d()->update_gizmos_on_off_state();
     }
+
         
     GLGizmoSimplify::add_simplify_suggestion_notification(
         obj_idxs, model.objects, *notification_manager);
+
+    /* Cybersolid Added Part */
+    if (enable_mold) {
+        //Add Cube and configure its size %110 of the original object. Then Remove the molded part from it
+        //ModelObject *model_object = create_molded_object(false);
+		//new_model->add_object(*model_object); 
+		//Field *extruders = wxGetApp().get_tab(Preset::Type::TYPE_FFF)->get_field("extruders_count");
+		//extruders->set_value(new ConfigOptionInt(2), true);
+		//extruders->field_changed();
+		const auto shape_type = config->opt_enum<ConfigMoldType>("mold_shapes_type");
+        create_molded_object(input_files, shape_type);
+
+    }
 
     return obj_idxs;
 }
@@ -6499,10 +6636,18 @@ void Plater::send_gcode()
 {
     // if physical_printer is selected, send gcode for this printer
     DynamicPrintConfig* physical_printer_config = wxGetApp().preset_bundle->physical_printers.get_selected_printer_config();
+
     if (! physical_printer_config || p->model.objects.empty())
         return;
+    /*
+    //Metal Extrusion 2 extruder settings
+	DynamicPrintConfig modified_config(*physical_printer_config);
+    if (bool enable_mold = this->p->config->opt_bool("mold_shapes")) {
+        modified_config.set_num_extruders(2);
+    }
+    */
 
-    PrintHostJob upload_job(physical_printer_config);
+	PrintHostJob upload_job(physical_printer_config);
     if (upload_job.empty())
         return;
 

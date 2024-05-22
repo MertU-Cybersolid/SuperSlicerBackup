@@ -209,7 +209,7 @@ public:
 #endif // __APPLE__        
     }
 
-private:
+public:
     void reset_settings_value();
     void update_settings_value(const Selection& selection);
 

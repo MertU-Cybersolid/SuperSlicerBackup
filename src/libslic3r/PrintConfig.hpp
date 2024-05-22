@@ -193,6 +193,13 @@ enum InfillConnection {
     icConnected, icHoles, icOuterShell, icNotConnected,
 };
 
+enum ConfigMoldType{
+    mtNone,
+    mtBox,
+    mtCube,
+    mtCylinder,
+};
+
 enum RemainingTimeType : uint8_t{
     rtNone      = 0,
     rtM117      = 1<<0,
@@ -1048,7 +1055,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     //      r - regular expression
     //      i - case insensitive
     //      w - whole word
-    ((ConfigOptionStrings,             gcode_substitutions))    ((ConfigOptionString,              layer_gcode))
+    ((ConfigOptionStrings,             gcode_substitutions))    
+    ((ConfigOptionString,              layer_gcode))
     ((ConfigOptionString,              feature_gcode))
     ((ConfigOptionFloat,               max_gcode_per_second))
     ((ConfigOptionFloatOrPercent,      max_print_speed))
@@ -1108,6 +1116,16 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionString,              template_custom_gcode))
 
 )
+
+PRINT_CONFIG_CLASS_DEFINE(
+	MetalExtrusionConfig,
+
+	((ConfigOptionBool, mold_shapes))
+	((ConfigOptionEnum<ConfigMoldType>, mold_shapes_type))
+
+)
+//TODO: ***********************************************************************
+
 #ifdef HAS_PRESSURE_EQUALIZER
     ((ConfigOptionFloat, max_volumetric_extrusion_rate_slope_positive))
     ((ConfigOptionFloat, max_volumetric_extrusion_rate_slope_negative))
@@ -1123,7 +1141,7 @@ static inline std::string get_extrusion_axis(const GCodeConfig& cfg)
 // This object is mapped to Perl as Slic3r::Config::Print.
 PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     PrintConfig,
-    (MachineEnvelopeConfig, GCodeConfig),
+    (MachineEnvelopeConfig, GCodeConfig, MetalExtrusionConfig),
 
     ((ConfigOptionBool,                 allow_empty_layers))
     ((ConfigOptionBool,                 avoid_crossing_perimeters))
@@ -1482,6 +1500,7 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionBool,                         thumbnails_with_support))
     ((ConfigOptionFloat,                        z_rotate))
 )
+
 
 PRINT_CONFIG_CLASS_DERIVED_DEFINE0(
     SLAFullPrintConfig,

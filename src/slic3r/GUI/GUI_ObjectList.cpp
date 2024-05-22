@@ -1447,6 +1447,59 @@ void ObjectList::load_subobject(ModelVolumeType type, bool from_galery/* = false
 
     selection_changed();
 }
+
+/*Loading parts from given inputs directly*/
+void ObjectList::load_subobject_from_input(wxArrayString& input_files, ModelVolumeType type, bool from_galery/* = false*/)
+{
+    if (type == ModelVolumeType::INVALID && from_galery) {
+        return;
+    }
+
+    wxDataViewItem item = GetSelection();
+    // we can add volumes for Object or Instance
+    if (!item || !(m_objects_model->GetItemType(item)&(itObject|itInstance)))
+        return;
+    const int obj_idx = m_objects_model->GetObjectIdByItem(item);
+
+    if (obj_idx < 0)
+        return;
+
+    // Get object item, if Instance is selected
+    if (m_objects_model->GetItemType(item)&itInstance)
+        item = m_objects_model->GetItemById(obj_idx);
+
+    if (input_files.IsEmpty())
+        return;
+
+    take_snapshot((type == ModelVolumeType::MODEL_PART) ? _L("Load Part") : _L("Load Modifier"));
+
+    std::vector<ModelVolume*> volumes;
+    // ! ysFIXME - delete commented code after testing and rename "load_modifier" to something common
+    /*
+    if (type == ModelVolumeType::MODEL_PART)
+        load_part(*(*m_objects)[obj_idx], volumes, type, from_galery);
+    else*/
+        load_modifier(input_files, *(*m_objects)[obj_idx], volumes, type, from_galery);
+
+    if (volumes.empty())
+        return;
+
+    wxDataViewItemArray items = reorder_volumes_and_get_selection(obj_idx, [volumes](const ModelVolume* volume) {
+        return std::find(volumes.begin(), volumes.end(), volume) != volumes.end(); });
+
+    if (type == ModelVolumeType::MODEL_PART)
+        // update printable state on canvas
+        wxGetApp().plater()->canvas3D()->update_instance_printable_state_for_object((size_t)obj_idx);
+
+    if (items.size() > 1) {
+        m_selection_mode = smVolume;
+        m_last_selected_item = wxDataViewItem(nullptr);
+    }
+    select_items(items);
+
+    selection_changed();
+}
+
 /*
 void ObjectList::load_part(ModelObject& model_object, std::vector<ModelVolume*>& added_volumes, ModelVolumeType type, bool from_galery = false)
 {

@@ -838,6 +838,8 @@ static std::vector<std::string> s_Preset_printer_options {
     "default_print_profile", "inherits",
     "remaining_times",
     "remaining_times_type",
+    "mold_shapes",
+    "mold_shapes_type",
     "silent_mode", 
     "machine_limits_usage",
     "thumbnails",

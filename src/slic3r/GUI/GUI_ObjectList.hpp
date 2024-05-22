@@ -249,6 +249,7 @@ public:
     bool                is_instance_or_object_selected();
 
     void                load_subobject(ModelVolumeType type, bool from_galery = false);
+    void                load_subobject_from_input(wxArrayString& input_files, ModelVolumeType type, bool from_galery /* = false*/); //Cyberslicer
     // ! ysFIXME - delete commented code after testing and rename "load_modifier" to something common
     //void                load_part(ModelObject& model_object, std::vector<ModelVolume*>& added_volumes, ModelVolumeType type, bool from_galery = false);
     void                load_modifier(const wxArrayString& input_files, ModelObject& model_object, std::vector<ModelVolume*>& added_volumes, ModelVolumeType type, bool from_galery = false);

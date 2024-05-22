@@ -237,6 +237,14 @@ static const t_config_enum_values s_keys_map_InfillConnection{
 };
 CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(InfillConnection)
 
+static const t_config_enum_values s_keys_map_ConfigMoldType{
+    { "mtNone", mtNone },
+    { "mtBox", mtBox },
+    { "mtCube", mtCube },
+    { "mtCylinder", mtCylinder },
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(ConfigMoldType)
+
 static const t_config_enum_values s_keys_map_RemainingTimeType{
     { "m117", rtM117 },
     { "m73", rtM73 },
@@ -3350,6 +3358,31 @@ void PrintConfigDef::init_fff_params()
     def->enum_labels.push_back(L("M73"));
     def->enum_labels.push_back(L("M73 & M117"));
     def->set_default_value(new ConfigOptionEnum<RemainingTimeType>(RemainingTimeType::rtM73));
+    
+    //Cyberslicer Metal Extrusion Config options def
+    def = this->add("mold_shapes", coBool);
+    def->label = L("Mold");
+    def->category = OptionCategory::metal_extrusion;
+    def->tooltip = L("After chosing the mold type import the model you want to mold");
+    def->mode = comExpert | comPrusa;
+    def->set_default_value(new ConfigOptionBool(false));
+
+    def = this->add("mold_shapes_type", coEnum);
+    def->label = L("Method");
+    def->full_label = L("Supports Basic 3D Shapes");
+    def->category      = OptionCategory::metal_extrusion;
+    def->tooltip = L("You can choose between Cube, Box and Cylinder.");
+    def->mode = comExpert | comSuSi;
+    def->enum_keys_map = &ConfigOptionEnum<ConfigMoldType>::get_enum_values();
+    def->enum_values.push_back("mtNone");
+    def->enum_values.push_back("mtBox");
+    def->enum_values.push_back("mtCube");
+    def->enum_values.push_back("mtCylinder");
+    def->enum_labels.push_back(L("None"));
+    def->enum_labels.push_back(L("Box"));
+    def->enum_labels.push_back(L("Cube"));
+    def->enum_labels.push_back(L("Cylinder"));
+    def->set_default_value(new ConfigOptionEnum<ConfigMoldType>(ConfigMoldType::mtNone));
 
     def = this->add("silent_mode", coBool);
     def->label = L("Supports stealth mode");
@@ -7813,6 +7846,7 @@ std::unordered_set<std::string> prusa_export_to_remove_keys = {
 "lift_min",
 "machine_max_acceleration_travel",
 "max_speed_reduction",
+"mold_shapes_type",
 "milling_after_z",
 "milling_cutter",
 "milling_diameter",
@@ -8975,7 +9009,7 @@ std::string validate(const FullPrintConfig& cfg)
         return 1; \
     }
 PRINT_CONFIG_CACHE_INITIALIZE((
-    PrintObjectConfig, PrintRegionConfig, MachineEnvelopeConfig, GCodeConfig, PrintConfig, FullPrintConfig,
+    PrintObjectConfig, PrintRegionConfig, MachineEnvelopeConfig, GCodeConfig, MetalExtrusionConfig, PrintConfig, FullPrintConfig,
     SLAMaterialConfig, SLAPrintConfig, SLAPrintObjectConfig, SLAPrinterConfig, SLAFullPrintConfig))
 static int print_config_static_initialized = print_config_static_initializer();
 

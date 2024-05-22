@@ -155,7 +155,8 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_S
 #endif // __APPLE__
 
     // Load the icon either from the exe, or from the ico file.
-    SetIcon(main_frame_icon(wxGetApp().get_app_mode()));
+    //SetIcon(main_frame_icon(wxGetApp().get_app_mode()));
+    SetIcon(wxIcon(var("CyberSlicer_128px.png"), wxBITMAP_TYPE_PNG));
 
 	// initialize status bar
 //    m_statusbar = std::make_shared<ProgressStatusBar>(this);
@@ -985,7 +986,10 @@ void MainFrame::update_title()
     if (wxGetApp().is_editor() && !has_name)
         title += (" " + _L(SLIC3R_BASED_ON));
 
-    SetTitle(title);
+    //SetTitle(title);
+    wxString title2 = wxEmptyString;
+    title2 += wxString("CyberSlicer");
+    SetTitle(title2);
 }
 
 void MainFrame::init_tabpanel()

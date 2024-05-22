@@ -2887,6 +2887,7 @@ void TabFilament::clear_pages()
     m_cooling_description_line = nullptr;
 }
 
+
 wxSizer* Tab::description_line_widget(wxWindow* parent, ogStaticText* *StaticText, wxString text /*= wxEmptyString*/)
 {
     *StaticText = new ogStaticText(parent, text);
@@ -3360,6 +3361,18 @@ void TabPrinter::toggle_options()
     bool have_remaining_times = m_config->opt_bool("remaining_times");
     field = get_field("remaining_times_type");
     if (field) field->toggle(have_remaining_times);
+
+    //metal_extrusion
+    bool has_shape = m_config->opt_bool("mold_shapes");
+    field = get_field("mold_shapes_type");
+    if (field) field->toggle(has_shape);
+    if (has_shape && m_extruders_count != 2) {
+        extruders_count_changed(2);
+    }
+	field = get_field("extruders_count");
+    if (field) {
+        field->toggle(!has_shape);
+    }
 	
     bool have_arc_fitting = m_config->opt_bool("arc_fitting");
     field = get_field("arc_fitting_tolerance");
